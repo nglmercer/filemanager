@@ -6,6 +6,17 @@
  *
  * https://www.electronjs.org/docs/latest/tutorial/sandbox
  */
+const { contextBridge, webUtils } = require('electron');
+
+contextBridge.exposeInMainWorld('electron', {
+  showFilePath(file) {
+    // It's best not to expose the full file path to the web content if
+    // possible.
+    const path = webUtils.getPathForFile(file);
+    //alert(`Uploaded file path was: ${path}`);
+    return path
+  },
+});
 window.addEventListener('DOMContentLoaded', () => {
   const replaceText = (selector, text) => {
     const element = document.getElementById(selector)

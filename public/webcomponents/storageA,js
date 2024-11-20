@@ -1,0 +1,93 @@
+class LocalStorageManager {
+    constructor(key) {
+        this.key = key;
+        // Inicializa el array si no existe
+        if (!localStorage.getItem(this.key)) {
+            localStorage.setItem(this.key, JSON.stringify([]));
+        }
+    }
+
+    // Añadir un elemento único
+    add(item) {
+        // Obtener el array actual
+        const items = this.getAll();
+        
+        // Verificar si el elemento ya existe
+        const exists = items.some(existingItem => 
+            (existingItem.id === item.id) || (existingItem.name === item.name)
+        );
+
+        // Si no existe, añadir
+        if (!exists) {
+            items.push(item);
+            this.saveItems(items);
+            return true;
+        }
+        return false;
+    }
+
+    // Eliminar un elemento por id o name
+    remove(identifier) {
+        let items = this.getAll();
+        const initialLength = items.length;
+        
+        // Filtrar elementos que no coincidan con el identificador
+        items = items.filter(item => 
+            item.id !== identifier && item.name !== identifier
+        );
+
+        // Si se eliminó algún elemento, guardar
+        if (items.length < initialLength) {
+            this.saveItems(items);
+            return true;
+        }
+        return false;
+    }
+
+    // Obtener un elemento por id o name
+    get(identifier) {
+        const items = this.getAll();
+        return items.find(item => 
+            item.id === identifier || item.name === identifier
+        );
+    }
+
+    // Obtener todos los elementos
+    getAll() {
+        return JSON.parse(localStorage.getItem(this.key) || '[]');
+    }
+
+    // Guardar array de elementos
+    saveItems(items) {
+        localStorage.setItem(this.key, JSON.stringify(items));
+    }
+
+    // Limpiar todos los elementos
+    clear() {
+        localStorage.setItem(this.key, JSON.stringify([]));
+    }
+
+    // Verificar si un elemento existe
+    exists(identifier) {
+        const items = this.getAll();
+        return items.some(item => 
+            item.id === identifier || item.name === identifier
+        );
+    }
+}
+export { LocalStorageManager }
+// Ejemplo de uso
+/* const usuariosStorage = new LocalStorageManager('usuarios');
+
+// Añadir un usuario
+usuariosStorage.add({
+    id: '1', 
+    name: 'Juan', 
+    email: 'juan@example.com'
+});
+
+// Obtener un usuario
+const usuario = usuariosStorage.get('Juan');
+
+// Eliminar un usuario
+usuariosStorage.remove('1'); */

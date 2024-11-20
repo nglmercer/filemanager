@@ -1,19 +1,26 @@
 // Modules to control application life and create native browser window
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('node:path')
-
+const NodedbJson = require('nodedb-json');
+const nodedb = new NodedbJson('./db.json');
+const http = require("http")
+const express = require('express');
+const expressapp = express();
+const PORT = process.env.PORT || 3002;
+expressapp.use(express.static(path.join(__dirname, 'public')));
+expressapp.listen(PORT,()=>console.log("express",PORT))
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
-    }
-  })
-
+        preload: path.join(__dirname, 'preload.js'), // Habilitar Preload Script
+        contextIsolation: true,
+        sandbox: false,
+      },
+  });
+  const url = "http://localhost:3002"
   // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
+  mainWindow.loadURL(url)
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
@@ -38,6 +45,10 @@ app.whenReady().then(() => {
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()
 })
-
+ipcMain.handle('get-file-paths', async (event, files) => {
+  const filePaths = files.map(file => file.path); // Acceder al atributo `path`
+  console.log('Rutas de archivos:', filePaths);
+  return filePaths;
+});
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
