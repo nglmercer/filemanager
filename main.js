@@ -6,9 +6,9 @@ const nodedb = new NodedbJson('./db.json');
 const http = require("http")
 const express = require('express');
 const expressapp = express();
+const fs = require('fs');
 const PORT = process.env.PORT || 3002;
 expressapp.use(express.static(path.join(__dirname, 'public')));
-expressapp.listen(PORT,()=>console.log("express",PORT))
 function createWindow () {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -25,6 +25,46 @@ function createWindow () {
   // Open the DevTools.
   // mainWindow.webContents.openDevTools()
 }
+
+expressapp.get('/media/*', (req, res) => {
+  const requestedPath = decodeURIComponent(req.params[0]); // Decodifica rutas con %20
+  const filePath = path.resolve(requestedPath); // Resuelve la ruta absoluta
+
+  const extname = path.extname(filePath).toLowerCase();
+  const imageobj = {
+    '.jpg': 'jpeg',
+    '.jpeg': 'jpeg',
+    '.png': 'png',
+    '.gif': 'gif',
+    '.webp': 'webp',
+  };
+
+  // Verifica si el archivo existe
+  fs.stat(filePath, (err, stats) => {
+    if (err || !stats.isFile()) {
+      return res.status(404).send('File not found');
+    }
+
+    // Determina el tipo de archivo
+    if (extname === '.mp3' || extname === '.wav') {
+      res.setHeader('Content-Type', 'audio/' + extname.slice(1));
+    } else if (extname === '.mp4' || extname === '.webm') {
+      res.setHeader('Content-Type', 'video/' + extname.slice(1));
+    } else if (imageobj[extname]) {
+      res.setHeader('Content-Type', 'image/' + imageobj[extname]);
+    } else {
+      return res.status(415).send('Unsupported file type');
+    }
+
+    // Lee el archivo y envíalo
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  });
+});
+
+expressapp.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+});
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.

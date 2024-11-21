@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galería de Elementos</title>
+</head>
+<body>
+    <div id="galeria-elementos"></div>
+    <template id="galeria-elementos-template">
+        <style>
+            :host {
+                display: block;
+                font-family: Arial, sans-serif;
+            }
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+            }
+            .search-bar {
+                width: 100%;
+                padding: 10px;
+                margin-bottom: 20px;
+                font-size: 16px;
+            }
+            .gallery {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 20px;
+            }
+            .item {
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                padding: 10px;
+                text-align: center;
+                position: relative;
+            }
+            .item-icon {
+                font-size: 48px;
+                margin-bottom: 10px;
+            }
+            .item-name {
+                font-weight: bold;
+                margin-bottom: 5px;
+            }
+            .item-info {
+                font-size: 12px;
+                color: #666;
+            }
+            .item-tooltip {
+                position: absolute;
+                background-color: #333;
+                color: #fff;
+                padding: 5px;
+                border-radius: 4px;
+                font-size: 12px;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                white-space: nowrap;
+                opacity: 0;
+                transition: opacity 0.3s;
+                pointer-events: none;
+            }
+            .item:hover .item-tooltip {
+                opacity: 1;
+            }
+            .delete-btn {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background-color: #ff4444;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+                cursor: pointer;
+            }
+        </style>
+        <div class="container">
+            <input type="text" class="search-bar" placeholder="Buscar elementos...">
+            <div class="gallery"></div>
+        </div>
+    </template>
+
+    <script>
+        class GaleriaElementos extends HTMLElement {
+            constructor() {
+                super();
+                this.attachShadow({ mode: 'open' });
+                const template = document.getElementById('galeria-elementos-template');
+                this.shadowRoot.appendChild(template.content.cloneNode(true));
+
+                this.elementos = [];
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                const searchBar = this.shadowRoot.querySelector('.search-bar');
+                searchBar.addEventListener('input', () => this.filtrarElementos());
+
+                this.shadowRoot.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('delete-btn')) {
+                        const nombre = e.target.dataset.nombre;
+                        this.borrarElemento(nombre);
+                    }
+                });
+            }
+
+            agregarElemento(elemento) {
+                this.elementos.push(elemento);
+                this.renderizarElementos();
+            }
+
+            borrarElemento(nombre) {
+                this.elementos = this.elementos.filter(elem => elem.nombre !== nombre);
+                this.renderizarElementos();
+            }
+
+            obtenerElementoPorNombre(nombre) {
+                return this.elementos.find(elem => elem.nombre === nombre);
+            }
+
+            obtenerElementoPorId(id) {
+                return this.elementos.find(elem => elem.id === id);
+            }
+
+            filtrarElementos() {
+                const searchTerm = this.shadowRoot.querySelector('.search-bar').value.toLowerCase();
+                const elementosFiltrados = this.elementos.filter(elem => 
+                    elem.nombre.toLowerCase().includes(searchTerm) ||
+                    elem.path.toLowerCase().includes(searchTerm)
+                );
+                this.renderizarElementos(elementosFiltrados);
+            }
+
+            renderizarElementos(elementos = this.elementos) {
+                const gallery = this.shadowRoot.querySelector('.gallery');
+                gallery.innerHTML = '';
+
+                elementos.forEach(elem => {
+                    const item = document.createElement('div');
+                    item.className = 'item';
+
+                    const icon = this.getIconForType(elem.type);
+                    const size = this.formatSize(elem.size);
+                    const date = new Date(elem.lastModified).toLocaleDateString();
+
+                    item.innerHTML = `
+                        <div class="item-icon">${icon}</div>
+                        <div class="item-name">${elem.nombre}</div>
+                        <div class="item-info">${size} - ${date}</div>
+                        <div class="item-tooltip">${elem.nombre}<br>${elem.path}</div>
+                        <button class="delete-btn" data-nombre="${elem.nombre}">×</button>
+                    `;
+
+                    gallery.appendChild(item);
+                });
+            }
+
+            getIconForType(type) {
+                if (type.startsWith('image')) return '🖼️';
+                if (type.startsWith('video')) return '🎥';
+                if (type.startsWith('text')) return '📄';
+                if (type.startsWith('audio')) return '🎵';
+                return '📁';
+            }
+
+            formatSize(bytes) {
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                if (bytes === 0) return '0 Byte';
+                const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+                return Math.round(bytes / Math.pow(1024, i), 2) + ' ' + sizes[i];
+            }
+        }
+
+        customElements.define('galeria-elementos', GaleriaElementos);
+        document.getElementById("galeria-elementos").appendChild(document.createElement('galeria-elementos'));
+        // Ejemplo de uso
+        const galeriaElementos = document.querySelector('galeria-elementos');
+        galeriaElementos.agregarElemento({
+            nombre: 'archivo.txt',
+            path: 'c:/user/example/archivo.txt',
+            size: 123456,
+            type: 'text/plain',
+            lastModified: 1679488000000
+        });
+        galeriaElementos.agregarElemento({
+            nombre: 'archivo.img',
+            path: 'c:/user/example/archivo.img',
+            size: 123456,
+            type: 'image/webp',
+            lastModified: 1679488000000
+        });
+        galeriaElementos.agregarElemento({
+            nombre: 'video.mp4',
+            path: 'c:/user/example/video.mp4',
+            size: 9876543,
+            type: 'video/mp4',
+            lastModified: 1679488000000
+        });
+    </script>
+</body>
+</html>
