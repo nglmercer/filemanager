@@ -134,7 +134,233 @@ class LocalStorageManager {
         throw error;
     }
 }
+class GridContainer extends HTMLElement {
+  constructor() {
+      super();
+      this.attachShadow({ mode: 'open' });
+      this.items = new Map(); // Usamos Map para mantener un registro de elementos con ID
+      this.nextId = 1; // Counter para generar IDs únicos
+      this.render();
+  }
 
+    render() {
+      this.shadowRoot.innerHTML = /*html */`
+          <style>
+              :host {
+                  display: block;
+                  width: 100%;
+              }
+              :host(.dark-mode) {
+                  background-color: #1a202c;
+                  color: #f7fafc;
+              }
+              .container {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, auto));
+                  gap: 1rem;
+                  padding: 1rem;
+              }
+              .search-container {
+                  padding: 1rem;
+                  margin-bottom: 1rem;
+              }
+              input {
+                  width: 100%;
+                  padding: 0.5rem;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 0.25rem;
+                  margin-bottom: 1rem;
+                  background-color: #ffffff;
+                  color: #1a202c;
+              }
+              :host(.dark-mode) input {
+                  background-color: #2d3748;
+                  color: #f7fafc;
+                  border: 1px solid #4a5568;
+              }
+              .grid-item {
+                  background-color: #ffffff;
+                  border: 1px solid #e2e8f0;
+                  border-radius: 0.5rem;
+                  padding: 1rem;
+                  cursor: pointer;
+                  transition: transform 0.2s, background-color 0.2s;
+              }
+              .grid-item:hover {
+                  transform: scale(1.02);
+              }
+              :host(.dark-mode) .grid-item {
+                  background-color: #2d3748;
+                  border: 1px solid #4a5568;
+              }
+              .grid-item img, .grid-item video {
+                  width: 100%;
+                  height: auto;
+                  object-fit: cover;
+                  border-radius: 0.25rem;
+                  margin-bottom: 0.5rem;
+              }
+              .hidden {
+                  display: none !important;
+              }
+          </style>
+          <div class="search-container">
+              <input type="text" placeholder="Buscar elementos..." class="search-input">
+          </div>
+          <div class="container"></div>
+      `;
+
+      this.container = this.shadowRoot.querySelector('.container');
+      this.searchInput = this.shadowRoot.querySelector('.search-input');
+
+      this.searchInput.addEventListener('input', (e) => {
+          this.filterItems(e.target.value);
+      });
+  }
+
+  toggleDarkMode(isDark) {
+    if (isDark) {
+        this.classList.add('dark-mode');
+    } else {
+        this.classList.remove('dark-mode');
+    }
+  }
+
+  filterItems(searchText) {
+      this.items.forEach((itemData, id) => {
+          const text = itemData.element.textContent.toLowerCase();
+          const searchLower = searchText.toLowerCase();
+          if (text.includes(searchLower)) {
+              itemData.element.classList.remove('hidden');
+          } else {
+              itemData.element.classList.add('hidden');
+          }
+      });
+  }
+
+  // Método para añadir un nuevo elemento
+  addItem(content, mediaUrl = '', mediaType = '', additionalData = {}) {
+      const id = this._generateId();
+      const item = document.createElement('div');
+      item.className = 'grid-item';
+      item.dataset.id = id;
+      
+      let mediaElement = '';
+      if (mediaUrl) {
+          if (mediaType.includes('video')) {
+              mediaElement = `<video src="/media/${mediaUrl}" controls></video>`;
+          } else {
+              mediaElement = `<img src="/media/${mediaUrl}" alt="Item media">`;
+          }
+      }
+
+      item.innerHTML = `
+          ${mediaElement}
+          <input class="content" value="${content}" readonly>
+      `;
+
+      item.addEventListener('click', () => {
+          const detail = {
+              id,
+              content,
+              mediaUrl,
+              mediaType,
+              additionalData,
+          };
+          
+          const event = new CustomEvent('itemClick', {
+              detail,
+              bubbles: true,
+              composed: true
+          });
+          this.dispatchEvent(event);
+      });
+
+      this.container.appendChild(item);
+      this.items.set(id, {
+          element: item,
+          content,
+          mediaUrl,
+          mediaType
+      });
+
+      return id; // Retornamos el ID para referencia futura
+  }
+
+  // Método para limpiar todos los elementos
+  clearAll() {
+      this.container.innerHTML = '';
+      this.items.clear();
+      this.nextId = 1;
+  }
+
+  // Método para modificar un elemento específico
+  updateItem(id, newContent, newMediaUrl = '', newMediaType = '') {
+      const itemData = this.items.get(id);
+      if (!itemData) {
+          throw new Error(`No se encontró el elemento con ID: ${id}`);
+      }
+
+      let mediaElement = '';
+      if (newMediaUrl) {
+          if (newMediaType === 'video') {
+              mediaElement = `<video src="${newMediaUrl}" controls></video>`;
+          } else {
+              mediaElement = `<img src="${newMediaUrl}" alt="Item media">`;
+          }
+      }
+
+      itemData.element.innerHTML = `
+          ${mediaElement}
+          <div class="content">${newContent}</div>
+      `;
+
+      // Actualizar los datos almacenados
+      itemData.content = newContent;
+      itemData.mediaUrl = newMediaUrl;
+      itemData.mediaType = newMediaType;
+  }
+
+  // Método para eliminar un elemento específico
+  removeItem(id) {
+      const itemData = this.items.get(id);
+      if (!itemData) {
+          throw new Error(`No se encontró el elemento con ID: ${id}`);
+      }
+
+      itemData.element.remove();
+      this.items.delete(id);
+
+      // Emitir evento de eliminación
+      const event = new CustomEvent('itemRemoved', {
+          detail: { id },
+          bubbles: true,
+          composed: true
+      });
+      this.dispatchEvent(event);
+  }
+
+  // Método para obtener todos los elementos
+  getAllItems() {
+      const items = {};
+      this.items.forEach((value, key) => {
+          items[key] = {
+              content: value.content,
+              mediaUrl: value.mediaUrl,
+              mediaType: value.mediaType
+          };
+      });
+      return items;
+  }
+
+  // Método privado para generar IDs únicos
+  _generateId() {
+      return `item-${this.nextId++}`;
+  }
+}
+
+// Registrar el componente
+customElements.define('grid-container', GridContainer);
 class DragAndDropComponent extends HTMLElement {
     constructor() {
         super();
@@ -149,17 +375,55 @@ class DragAndDropComponent extends HTMLElement {
                 text-align: center;
                 color: #666;
                 font-family: Arial, sans-serif;
-                transition: background-color 0.3s ease;
+                transition: all 0.3s ease;
+                cursor: pointer;
+            }
+            .drop-area:hover, .drop-area:active {
+                background-color: #f0f8ff;
+                border-color: #666;
             }
             .drop-area.highlight {
                 background-color: #f0f8ff;
+            }
+            input[type="file"] {
+                display: none;
+            }
+            label {
+                display: block;
+                width: 100%;
+                height: 100%;
+                cursor: pointer;
             }
         `;
 
         const container = document.createElement('div');
         container.classList.add('drop-area');
-        container.textContent = 'Arrastra y suelta archivos aquí';
 
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.multiple = true;
+        fileInput.id = 'fileInput';
+        
+        const label = document.createElement('label');
+        label.htmlFor = 'fileInput';
+        label.textContent = 'Arrastra y suelta archivos aquí o haz clic para seleccionar';
+
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            for (const file of files) {
+                processDroppedFile(file, e);
+                const event = new CustomEvent('DroppedFile', {
+                    detail: { file },
+                    bubbles: true,
+                    composed: true
+                });
+                this.dispatchEvent(event);
+            }
+        });
+
+        container.appendChild(label);
+        container.appendChild(fileInput);
+        
         shadow.appendChild(style);
         shadow.appendChild(container);
 
@@ -194,6 +458,12 @@ class DragAndDropComponent extends HTMLElement {
         const files = e.dataTransfer.files;
         for (const file of files) {
             processDroppedFile(file,e);
+            const event = new CustomEvent('DroppedFile', {
+              detail: { file },
+              bubbles: true,
+              composed: true
+          });
+          this.dispatchEvent(event);
         }
     }
     
@@ -625,7 +895,6 @@ customElements.define('custom-modal', CustomModal);
       textAnimation: 'text-rotate'
     }
   };
-  
   const animations = {
     'slide-fade': {
       enter: 'slideIn 2s ease-out, fadeIn 2s ease-out',
@@ -645,7 +914,7 @@ customElements.define('custom-modal', CustomModal);
     }
   };
 
-  class DonationAlert extends HTMLElement {
+class DonationAlert extends HTMLElement {
     constructor() {
       super();
       this.attachShadow({ mode: 'open' });

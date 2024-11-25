@@ -37,6 +37,12 @@ expressapp.get('/media/*', (req, res) => {
     '.png': 'png',
     '.gif': 'gif',
     '.webp': 'webp',
+    '.svg': 'svg',
+    '.bmp': 'bmp',
+    '.ico': 'x-icon',
+    '.tiff': 'tiff',
+    '.avif': 'avif',
+    '.apng': 'apng'
   };
 
   // Verifica si el archivo existe

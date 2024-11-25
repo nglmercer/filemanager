@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor de Overlay Configurable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+<grid-container id="myGrid"></grid-container>
+
+<script>
+// Definición del Web Component
+class GridContainer extends HTMLElement {
+    constructor() {
+        super();
+        this.attachShadow({ mode: 'open' });
+        this.items = new Map(); // Usamos Map para mantener un registro de elementos con ID
+        this.nextId = 1; // Counter para generar IDs únicos
+        this.render();
+    }
+
+    render() {
+        this.shadowRoot.innerHTML = `
+            <style>
+                :host {
+                    display: block;
+                    width: 100%;
+                }
+                .container {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 1rem;
+                    padding: 1rem;
+                }
+                .search-container {
+                    padding: 1rem;
+                    margin-bottom: 1rem;
+                }
+                input {
+                    width: 100%;
+                    padding: 0.5rem;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 0.25rem;
+                    margin-bottom: 1rem;
+                }
+                .grid-item {
+                    background-color: #ffffff;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 0.5rem;
+                    padding: 1rem;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                }
+                .grid-item:hover {
+                    transform: scale(1.02);
+                }
+                .grid-item img, .grid-item video {
+                    width: 100%;
+                    height: auto;
+                    object-fit: cover;
+                    border-radius: 0.25rem;
+                    margin-bottom: 0.5rem;
+                }
+                .hidden {
+                    display: none !important;
+                }
+            </style>
+            <div class="search-container">
+                <input type="text" placeholder="Buscar elementos..." class="search-input">
+            </div>
+            <div class="container"></div>
+        `;
+
+        this.container = this.shadowRoot.querySelector('.container');
+        this.searchInput = this.shadowRoot.querySelector('.search-input');
+
+        this.searchInput.addEventListener('input', (e) => {
+            this.filterItems(e.target.value);
+        });
+    }
+
+    filterItems(searchText) {
+        this.items.forEach((itemData, id) => {
+            const text = itemData.element.textContent.toLowerCase();
+            const searchLower = searchText.toLowerCase();
+            if (text.includes(searchLower)) {
+                itemData.element.classList.remove('hidden');
+            } else {
+                itemData.element.classList.add('hidden');
+            }
+        });
+    }
+
+    // Método para añadir un nuevo elemento
+    addItem(content, mediaUrl = '', mediaType = '') {
+        const id = this._generateId();
+        const item = document.createElement('div');
+        item.className = 'grid-item';
+        item.dataset.id = id;
+        
+        let mediaElement = '';
+        if (mediaUrl) {
+            if (mediaType === 'video') {
+                mediaElement = `<video src="${mediaUrl}" controls></video>`;
+            } else {
+                mediaElement = `<img src="${mediaUrl}" alt="Item media">`;
+            }
+        }
+
+        item.innerHTML = `
+            ${mediaElement}
+            <div class="content">${content}</div>
+        `;
+
+        item.addEventListener('click', () => {
+            const detail = {
+                id,
+                content,
+                mediaUrl,
+                mediaType,
+                timestamp: new Date().toISOString()
+            };
+            
+            const event = new CustomEvent('itemClick', {
+                detail,
+                bubbles: true,
+                composed: true
+            });
+            this.dispatchEvent(event);
+        });
+
+        this.container.appendChild(item);
+        this.items.set(id, {
+            element: item,
+            content,
+            mediaUrl,
+            mediaType
+        });
+
+        return id; // Retornamos el ID para referencia futura
+    }
+
+    // Método para limpiar todos los elementos
+    clearAll() {
+        this.container.innerHTML = '';
+        this.items.clear();
+        this.nextId = 1;
+    }
+
+    // Método para modificar un elemento específico
+    updateItem(id, newContent, newMediaUrl = '', newMediaType = '') {
+        const itemData = this.items.get(id);
+        if (!itemData) {
+            throw new Error(`No se encontró el elemento con ID: ${id}`);
+        }
+
+        let mediaElement = '';
+        if (newMediaUrl) {
+            if (newMediaType === 'video') {
+                mediaElement = `<video src="${newMediaUrl}" controls></video>`;
+            } else {
+                mediaElement = `<img src="${newMediaUrl}" alt="Item media">`;
+            }
+        }
+
+        itemData.element.innerHTML = `
+            ${mediaElement}
+            <div class="content">${newContent}</div>
+        `;
+
+        // Actualizar los datos almacenados
+        itemData.content = newContent;
+        itemData.mediaUrl = newMediaUrl;
+        itemData.mediaType = newMediaType;
+    }
+
+    // Método para eliminar un elemento específico
+    removeItem(id) {
+        const itemData = this.items.get(id);
+        if (!itemData) {
+            throw new Error(`No se encontró el elemento con ID: ${id}`);
+        }
+
+        itemData.element.remove();
+        this.items.delete(id);
+
+        // Emitir evento de eliminación
+        const event = new CustomEvent('itemRemoved', {
+            detail: { id },
+            bubbles: true,
+            composed: true
+        });
+        this.dispatchEvent(event);
+    }
+
+    // Método para obtener todos los elementos
+    getAllItems() {
+        const items = {};
+        this.items.forEach((value, key) => {
+            items[key] = {
+                content: value.content,
+                mediaUrl: value.mediaUrl,
+                mediaType: value.mediaType
+            };
+        });
+        return items;
+    }
+
+    // Método privado para generar IDs únicos
+    _generateId() {
+        return `item-${this.nextId++}`;
+    }
+}
+
+// Registrar el componente
+customElements.define('grid-container', GridContainer);
+// Obtener una referencia al componente
+const grid = document.getElementById('myGrid');
+
+// Añadir elementos y guardar sus IDs
+const id1 = grid.addItem('Primer elemento');
+const id2 = grid.addItem('Segundo elemento', 'imagen.jpg', 'image');
+const id3 = grid.addItem('Tercer elemento', 'video.mp4', 'video');
+
+// Modificar un elemento específico
+grid.updateItem(id1, 'Contenido actualizado', 'nueva-imagen.jpg', 'image');
+
+// Eliminar un elemento específico
+//grid.removeItem(id2);
+
+// Limpiar todos los elementos
+//grid.clearAll();
+
+// Obtener todos los elementos
+const allItems = grid.getAllItems();
+console.log(allItems);
+
+// Escuchar eventos de eliminación
+grid.addEventListener('itemRemoved', (event) => {
+    console.log('Elemento eliminado:', event.detail.id);
+});
+grid.addEventListener('itemClick', (event) => {
+    console.log('Elemento clickeado:', event.detail);
+});
+</script>
+</body>
+</html>

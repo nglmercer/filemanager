@@ -26,9 +26,9 @@
   </head>
   <body>
     <div id="drop-area" ></div>
-    We are using Node.js <span id="node-version"></span>,
+    Node.js  <span id="node-version"></span>,
     Chromium <span id="chrome-version"></span>,
-    and Electron <span id="electron-version"></span>.
+    Electron <span id="electron-version"></span>.
     <button id="openModal" class="modal-trigger" onclick="document.getElementById('Configurations').open()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
           <path stroke-linecap="round" stroke-linejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 0 1 1.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.559.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.894.149c-.424.07-.764.383-.929.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 0 1-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.398.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 0 1-.12-1.45l.527-.737c.25-.35.272-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.108-1.204l-.526-.738a1.125 1.125 0 0 1 .12-1.45l.773-.773a1.125 1.125 0 0 1 1.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894Z" />
@@ -38,6 +38,7 @@
   </button>
   <custom-modal modal-type="form" id="Configurations">
     <drag-and-drop></drag-and-drop>
+    <grid-container id="myGrid"></grid-container>
 
     <div id="galeria-elementos"></div>
 
@@ -125,61 +126,38 @@
   </template>
     <script src="./renderer.js"></script>
     <script>
-        document.getElementById("galeria-elementos").appendChild(document.createElement('galeria-elementos'));
-        // Ejemplo de uso
+        const grid = document.getElementById('myGrid');
+        const dropfile = document.querySelector('drag-and-drop');
+        dropfile.addEventListener('DroppedFile', (event) => {
+            console.log('File dropped:', event.detail.file);
+            addfilesitems();  
+        });
+        function addfilesitems() {
+          grid.clearAll();
+          setTimeout(() => {
+            const files = JSON.parse(localStorage.getItem('filePaths'));
+            console.log(files);
+            files.forEach(file => {
+            grid.addItem(file.nombre, file.path, file.mediaType || file.type,file);
+            console.log(file)});
+          }, 250);
+        }
+        grid.toggleDarkMode(true);
       ( async () => {
-        const files = JSON.parse(localStorage.getItem('filePaths'));
-        console.log(files);
-        files.forEach(file => console.log(file));
-        const galeriaElementos = document.querySelector('galeria-elementos');
-        galeriaElementos.addEventListener('elemento-agregado', (e) => {
-            console.log('Elemento agregado:', e.detail);
-        });
+        addfilesitems()
 
-        galeriaElementos.addEventListener('elemento-eliminado', (e) => {
-            console.log('Elemento eliminado:', e.detail);
-        });
-        files.forEach(file => galeriaElementos.agregarElemento(file));}
-      )()
-/*        
+      })()
+      const allItems = grid.getAllItems();
+      console.log(allItems);
 
-
-
-galeriaElementos.agregarElemento({
-            nombre: 'archivo.txt',
-            path: 'c:/user/example/archivo.txt',
-            size: 123456,
-            type: 'text/plain',
-            lastModified: 1679488000000
-        });
-        galeriaElementos.agregarElemento({
-            nombre: 'archivo.img',
-            path: 'c:/user/example/archivo.img',
-            size: 123456,
-            type: 'image/webp',
-            lastModified: 1679488000000
-        });
-        galeriaElementos.agregarElemento({
-            nombre: 'video.mp4',
-            path: 'c:/user/example/video.mp4',
-            size: 9876543,
-            type: 'video/mp4',
-            lastModified: 1679488000000
-        }); */
+      // Escuchar eventos de eliminación
+      grid.addEventListener('itemRemoved', (event) => {
+          console.log('Elemento eliminado:', event.detail.id);
+      });
+      grid.addEventListener('itemClick', (event) => {
+          console.log('Elemento clickeado:', event.detail);
+      });
     </script>
-<!--     <script>
-  document.addEventListener('drop', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
 
-    for (const f of e.dataTransfer.files) {
-      console.log('File(s) you dragged here: ', f.path)
-    }
-  });
-  document.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-  });
-    </script> -->
   </body>
 </html>
