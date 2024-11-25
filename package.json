@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "express": "^4.21.1",
-    "nodedb-json": "^1.0.0"
+    "nodedb-json": "^1.0.0",
+    "socket.io": "^4.8.1"
   }
 }
