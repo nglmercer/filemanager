@@ -158,7 +158,9 @@ class GridContainer extends HTMLElement {
                   display: grid;
                   grid-template-columns: repeat(auto-fit, minmax(200px, auto));
                   gap: 1rem;
+                  height: 100dvh;
                   padding: 1rem;
+                  overflow-y: auto;
               }
               .search-container {
                   padding: 1rem;
@@ -977,15 +979,17 @@ class DonationAlert extends HTMLElement {
         <div class="media-grid columns-${columns}">
           ${items.map(src => isVideo ? `
             <video autoplay loop muted class="media-item">
-              <source src="${src}" type="video/mp4">
+              <source src="/media/${src}" type="video/mp4">
             </video>
           ` : `
-            <img src="${src}" alt="Donation media" class="media-item" />
+            <img src=/media/"${src}" alt="Donation media" class="media-item" />
           `).join('')}
         </div>
       `;
     }
-  
+    getallTypesrender(){
+        return ['multi-image','video-grid','image-grid','video-image','image','video','text']
+    }
     renderContent(alert, theme) {
       switch (alert.type) {
         case 'multi-image':
@@ -998,17 +1002,17 @@ class DonationAlert extends HTMLElement {
           return `
             <div class="media-combo">
               <video autoplay loop muted class="media-item">
-                <source src="${alert.video}" type="video/mp4">
+                <source src="/media/${alert.video}" type="video/mp4">
               </video>
-              <img src="${alert.image}" alt="Donation media" class="media-item" />
+              <img src="/media/${alert.image}" alt="Donation media" class="media-item" />
             </div>
           `;
         case 'image':
-          return `<img src="${alert.content}" alt="Donation alert" class="media-item" />`;
+          return `<img src="/media/${alert.content}" alt="Donation alert" class="media-item" />`;
         case 'video':
           return `
             <video autoplay loop muted class="media-item">
-              <source src="${alert.content}" type="video/mp4">
+              <source src="/media/${alert.content}" type="video/mp4">
             </video>
           `;
         case 'text':

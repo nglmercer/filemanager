@@ -19,6 +19,63 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   }
 });
+class RoomManager {
+  constructor(io) {
+    this.io = io;
+    this.rooms = new Map(); // Almacena información de las salas
+  }
+
+  // Unir usuario a sala
+  joinRoom(socket, roomId) {
+    socket.join(roomId);
+    
+    if (!this.rooms.has(roomId)) {
+      this.rooms.set(roomId, new Set());
+    }
+    
+    this.rooms.get(roomId).add(socket.id);
+    
+    return {
+      roomId,
+      usersCount: this.rooms.get(roomId).size
+    };
+  }
+
+  // Salir de sala
+  leaveRoom(socket, roomId) {
+    socket.leave(roomId);
+    
+    if (this.rooms.has(roomId)) {
+      this.rooms.get(roomId).delete(socket.id);
+      
+      // Eliminar sala si está vacía
+      if (this.rooms.get(roomId).size === 0) {
+        this.rooms.delete(roomId);
+      }
+    }
+  }
+
+  // Emitir a todos los usuarios en una sala
+  emitToRoom(roomId, eventName, data) {
+    this.io.to(roomId).emit(eventName, data);
+  }
+
+  // Obtener usuarios en una sala
+  getRoomUsers(roomId) {
+    return this.rooms.get(roomId) || new Set();
+  }
+
+  // Verificar si una sala existe
+  roomExists(roomId) {
+    return this.rooms.has(roomId);
+  }
+
+  // Obtener número de usuarios en una sala
+  getRoomSize(roomId) {
+    return this.rooms.get(roomId)?.size || 0;
+  }
+}
+const roomManager = new RoomManager(io);
 
 expressapp.use(express.static(path.join(__dirname, 'public')));
 
@@ -75,8 +132,24 @@ expressapp.get('/media/*', (req, res) => {
 
 // Configuración de Socket.IO
 io.on('connection', (socket) => {
-  console.log('Cliente conectado');
+  console.log('Cliente conectado',socket.id);
+  socket.on('join-room', (roomId) => {
+    const roomInfo = roomManager.joinRoom(socket, roomId);
+    
+    // Notificar a todos en la sala
+    roomManager.emitToRoom(roomId, 'user-joined', {
+      userId: socket.id,
+      usersCount: roomInfo.usersCount
+    });
+  });
+  socket.on('create-overlay', ({ roomId, mapconfig }) => {
+    if (roomManager.roomExists(roomId)) {
+      console.log('create-overlay', mapconfig);
+      roomManager.emitToRoom(roomId, 'create-overlay', mapconfig);
+    }
+    // emitimos a todos los usuarios en la sala
 
+  });
   // Manejar creación de ventanas
   socket.on('create-window', (config) => {
     windowManager.createWindow(config);
@@ -97,6 +170,26 @@ io.on('connection', (socket) => {
     Array.from(windowManager.getWindows().entries())
       .map(([id, config]) => ({ id, ...config }))
   );
+  socket.on('leave-room', (roomId) => {
+    roomManager.leaveRoom(socket, roomId);
+    roomManager.emitToRoom(roomId, 'user-left', {
+      userId: socket.id,
+      usersCount: roomManager.getRoomSize(roomId)
+    });
+  });
+
+  socket.on('disconnect', () => {
+    // Limpiar todas las salas donde estaba el usuario
+    for (const [roomId, users] of roomManager.rooms.entries()) {
+      if (users.has(socket.id)) {
+        roomManager.leaveRoom(socket, roomId);
+        roomManager.emitToRoom(roomId, 'user-left', {
+          userId: socket.id,
+          usersCount: roomManager.getRoomSize(roomId)
+        });
+      }
+    }
+  });
 });
 
 // Eventos desde WindowManager hacia Socket.IO

@@ -6,7 +6,7 @@
 <!--     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
  -->    <link href="./styles.css" rel="stylesheet">
     <script src="./webcomponents/webc.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js" integrity="sha512-sDJv0a9w7m0w8a+t7/1/3/e/5/r/c/a/g/i/o/u/y/t/s/a/n/d/e/r/i/v/a/l/i/n/g/m/e/" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" integrity="sha384-mkQ3/7FUtcGyoppY6bz/PORYoGqOl7/aSUMn2ymDOJcapfS6PHqxhRTMh1RR0Q6+" crossorigin="anonymous"></script>    <script src="https://cdn.tailwindcss.com"></script>
     <title>Hello World!</title>
     <style>
       body {
@@ -125,8 +125,69 @@
           <div class="gallery"></div>
       </div>
   </template>
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-6">Window Manager (Web Interface)</h1>
+    
+    <button id="newWindowBtn" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded">
+      Nueva Ventana
+    </button>
+
+    <div id="windowsList" class="mt-6 space-y-4"></div>
+  </div>
+
+  <!-- Modal para nueva ventana -->
+  <div id="windowModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-gray-800 p-6 rounded-lg w-96">
+      <h2 class="text-xl font-bold mb-4">Nueva Ventana</h2>
+      <form id="windowForm" class="space-y-4">
+        <div>
+          <label class="block mb-2">URL</label>
+          <input type="text" name="url" value="${window.location.href}" class="w-full px-3 py-2 bg-gray-700 rounded text-white" required>
+        </div>
+        <div>
+          <label class="block mb-2">Ancho</label>
+          <input type="number" name="width" class="w-full px-3 py-2 bg-gray-700 rounded text-white" value="800">
+        </div>
+        <div>
+          <label class="block mb-2">Alto</label>
+          <input type="number" name="height" class="w-full px-3 py-2 bg-gray-700 rounded text-white" value="600">
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" name="alwaysOnTop" class="mr-2">
+          <label>Siempre Visible</label>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" name="transparent" class="mr-2">
+          <label>Transparente</label>
+        </div>
+        <div class="flex items-center">
+          <input type="checkbox" name="ignoreMouseEvents" class="mr-2">
+          <label>Ignorar Mouse</label>
+        </div>
+        <div class="flex justify-end space-x-4">
+          <button type="button" id="cancelBtn" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">
+            Cancelar
+          </button>
+          <button type="submit" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/web.js"></script>
     <script src="./renderer.js"></script>
     <script>
+      //const socket = io();
+      socket.emit('join-room', 'sala1');
+      socket.on('user-joined', ({ userId, usersCount }) => {
+        console.log(`Usuario ${userId} se unió. Total usuarios: ${usersCount}`);
+      });
+
+      socket.on('user-left', ({ userId, usersCount }) => {
+        console.log(`Usuario ${userId} salió. Total usuarios: ${usersCount}`);
+      });
         const grid = document.getElementById('myGrid');
         const dropfile = document.querySelector('drag-and-drop');
         dropfile.addEventListener('DroppedFile', (event) => {
@@ -157,7 +218,19 @@
       });
       grid.addEventListener('itemClick', (event) => {
           console.log('Elemento clickeado:', event.detail);
+          const mapconfig = mapdatatooverlay(event.detail.additionalData);
+          socket.emit('create-overlay', {mapconfig,roomId:'sala1'});
       });
+      function mapdatatooverlay(data) {
+        console.log(data);
+        const config = {
+          type: data.type.includes('video') ? 'video' : 'image',
+          content: data.path,
+          text: data.nombre,
+          duration: 5000
+        };
+        return config;
+      }
     </script>
 
   </body>

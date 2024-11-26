@@ -1,5 +1,13 @@
 import { themes } from './components/ThemeManager.js';
+const socket = io();
+socket.emit('join-room', 'sala1');
+socket.on('user-joined', ({ userId, usersCount }) => {
+  console.log(`Usuario ${userId} se unió. Total usuarios: ${usersCount}`);
+});
 
+socket.on('user-left', ({ userId, usersCount }) => {
+  console.log(`Usuario ${userId} salió. Total usuarios: ${usersCount}`);
+});
 // Enhanced alerts data with more media combinations
 const alerts = [
   {
@@ -45,16 +53,15 @@ const alerts = [
     duration: 9000
   }
 ];
-
+// ['multi-image','video-grid','image-grid','video-image','image','video','text']
 let currentIndex = 0;
-let currentTheme = 'default';
 const themeNames = Object.keys(themes);
-
-function showNextAlert() {
+console.log(themes,themeNames)
+function showNextAlert(currentTheme = 'default') {
   const alertContainer = document.createElement('donation-alert');
   alertContainer.theme = currentTheme;
   alertContainer.alert = alerts[currentIndex];
-  
+  console.log(alerts[currentIndex])
   document.querySelector('#app').appendChild(alertContainer);
   
   setTimeout(() => {
@@ -68,35 +75,20 @@ function showNextAlert() {
   }, alerts[currentIndex].duration);
 }
 
-// Add theme controls to the page
-const controls = document.createElement('div');
-controls.className = 'fixed bottom-4 left-4 flex gap-2';
-controls.innerHTML = `
-  <div class="bg-white/10 p-4 rounded-lg backdrop-blur-sm">
-    <h3 class="text-white mb-2">Theme:</h3>
-    <div class="flex gap-2">
-      ${Object.keys(themes).map(theme => `
-        <button
-          class="px-3 py-1 rounded ${theme === currentTheme ? 'bg-purple-600' : 'bg-gray-700'} text-white text-sm"
-          data-theme="${theme}"
-        >
-          ${theme}
-        </button>
-      `).join('')}
-    </div>
-  </div>
-`;
 
-controls.addEventListener('click', (e) => {
-  if (e.target.dataset.theme) {
-    currentTheme = e.target.dataset.theme;
-    // Update button styles
-    controls.querySelectorAll('button').forEach(btn => {
-      btn.className = `px-3 py-1 rounded ${btn.dataset.theme === currentTheme ? 'bg-purple-600' : 'bg-gray-700'} text-white text-sm`;
-    });
-  }
+//showNextAlert();
+function createOverlay(config, currentTheme = 'neon') {
+  if (!config ||!config.type || !config.content && !config.duration) return;
+  const alertContainer = document.createElement('donation-alert');
+  alertContainer.theme = currentTheme;
+  alertContainer.alert = config;
+  document.querySelector('#app').appendChild(alertContainer);
+  setTimeout(() => {
+    alertContainer.remove();
+  }, config.duration);
+}
+createOverlay(alerts[4],'neon');
+socket.on('create-overlay', (config) => {
+  console.log('create-window', config);
+  createOverlay(config);
 });
-
-document.body.appendChild(controls);
-
-showNextAlert();
