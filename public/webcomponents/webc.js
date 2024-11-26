@@ -252,7 +252,7 @@ class GridContainer extends HTMLElement {
           if (mediaType.includes('video')) {
               mediaElement = `<video src="/media/${mediaUrl}" controls></video>`;
           } else {
-              mediaElement = `<img src="/media/${mediaUrl}" alt="Item media">`;
+              mediaElement = `<img src="/media/${mediaUrl}" alt="${content || 'Item media'}">`;
           }
       }
 
@@ -977,13 +977,16 @@ class DonationAlert extends HTMLElement {
   
       return `
         <div class="media-grid columns-${columns}">
-          ${items.map(src => isVideo ? `
-            <video autoplay loop muted class="media-item">
-              <source src="/media/${src}" type="video/mp4">
-            </video>
-          ` : `
-            <img src=/media/"${src}" alt="Donation media" class="media-item" />
-          `).join('')}
+          ${items.map(src => {
+            const sanitizedSrc = src.startsWith('http') ? src : `/media/${src}`;
+            return isVideo ? `
+              <video autoplay loop muted class="media-item">
+                <source src="${sanitizedSrc}" type="video/mp4">
+              </video>
+            ` : `
+              <img src="${sanitizedSrc}" alt="Donation media" class="media-item" />
+            `;
+          }).join('')}
         </div>
       `;
     }
@@ -991,28 +994,45 @@ class DonationAlert extends HTMLElement {
         return ['multi-image','video-grid','image-grid','video-image','image','video','text']
     }
     renderContent(alert, theme) {
+        let mediaprefix = "/media/";
+        if(alert.image && alert.image.startsWith("http") || alert.video && alert.video.startsWith("http")){
+            mediaprefix = "";
+        }
       switch (alert.type) {
         case 'multi-image':
-          return this.renderMediaGrid(alert.images, 'image', theme);
+          const sanitizedImages = alert.images.map(img => 
+            img.startsWith('http') ? img : `/media/${img}`
+          );
+          return this.renderMediaGrid(sanitizedImages, 'image', theme);
         case 'video-grid':
-          return this.renderMediaGrid(alert.videos, 'video', theme);
+          const sanitizedVideos = alert.videos.map(video => 
+            video.startsWith('http') ? video : `/media/${video}`
+          );
+          return this.renderMediaGrid(sanitizedVideos, 'video', theme);
         case 'image-grid':
-          return this.renderMediaGrid(alert.images, 'image', theme);
+          const sanitizedGridImages = alert.images.map(img => 
+            img.startsWith('http') ? img : `/media/${img}`
+          );
+          return this.renderMediaGrid(sanitizedGridImages, 'image', theme);
         case 'video-image':
+          const videoSrc = alert.video.startsWith('http') ? alert.video : `/media/${alert.video}`;
+          const imageSrc = alert.image.startsWith('http') ? alert.image : `/media/${alert.image}`;
           return `
             <div class="media-combo">
               <video autoplay loop muted class="media-item">
-                <source src="/media/${alert.video}" type="video/mp4">
+                <source src="${videoSrc}" type="video/mp4">
               </video>
-              <img src="/media/${alert.image}" alt="Donation media" class="media-item" />
+              <img src="${imageSrc}" alt="Donation media" class="media-item" />
             </div>
           `;
         case 'image':
-          return `<img src="/media/${alert.content}" alt="Donation alert" class="media-item" />`;
+          const imgSrc = alert.content.startsWith('http') ? alert.content : `/media/${alert.content}`;
+          return `<img src="${imgSrc}" alt="Donation alert" class="media-item" />`;
         case 'video':
+          const vidSrc = alert.content.startsWith('http') ? alert.content : `/media/${alert.content}`;
           return `
             <video autoplay loop muted class="media-item">
-              <source src="/media/${alert.content}" type="video/mp4">
+              <source src="${vidSrc}" type="video/mp4">
             </video>
           `;
         case 'text':
@@ -1020,7 +1040,6 @@ class DonationAlert extends HTMLElement {
           return `<div class="text-content">${this.animateText(alert.content, theme.textAnimation)}</div>`;
       }
     }
-  
     render() {
       const alert = this._alert;
       if (!alert) return;
@@ -1045,7 +1064,7 @@ class DonationAlert extends HTMLElement {
           transition: all 0.2s ease-in-out;
         }
           .alert-container {
-            max-width: 40rem;
+            max-width: 90dvw;
             margin: 0 auto;
             padding: 1.5rem;
             border-radius: 1rem;
@@ -1069,7 +1088,7 @@ class DonationAlert extends HTMLElement {
           }
   
           .media-item {
-            max-width: 100%;
+            max-width: 90%;
             border-radius: ${theme.media.borderRadius || '0.5rem'};
             border: ${theme.media.border || 'none'};
           }

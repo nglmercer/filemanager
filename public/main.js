@@ -85,9 +85,11 @@ function createOverlay(config, currentTheme = 'neon') {
   document.querySelector('#app').appendChild(alertContainer);
   setTimeout(() => {
     alertContainer.remove();
-  }, config.duration);
+  }, 15000);//config.duration 
 }
-createOverlay(alerts[4],'neon');
+const testevent = alerts[3];
+createOverlay(testevent,'neon');
+console.log(testevent);
 socket.on('create-overlay', (config) => {
   console.log('create-window', config);
   createOverlay(config);
