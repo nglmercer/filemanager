@@ -10,7 +10,7 @@ class WindowManager extends EventEmitter {
       with: 800,
       height: 600,
       alwaysOnTop: false,
-      transparent: false,
+      transparent: true,
       ignoreMouseEvents: false,
       frame: false,
       webPreferences: {
